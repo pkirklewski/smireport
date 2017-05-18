@@ -93,10 +93,24 @@ BEGIN
 
 	-- Add Yes_VS_No calculation here - insert into  =================================================================================================================
 
+
+
+
+DELETE FROM #allInstances WHERE #allInstances.FormInstanceId = @FormInstanceID
+
+
+
+--DROP TABLE #FormInstanceIDs
+
+
+
+-- END OF Add Yes_VS_No calculation here - insert into =============================================================================
+END
+
 SELECT  FormInstanceID,QStatus 
 INTO #yes_or_no
 FROM #smi_report_basic 
-WHERE FormInstanceID = @FormInstanceID
+WHERE FormInstanceID = 754732
 AND (QStatus = 'Yes' OR QStatus ='No')
 
 
@@ -106,7 +120,7 @@ select (Select DISTINCT #yes_or_no.FormInstanceID) as FormInstanceID
 ,(SELECT COUNT(#yes_or_no.QStatus) WHERE #yes_or_no.QStatus = 'No') AS 'No' 
 INTO #yes_no_values
 FROM #yes_or_no 
-WHERE #yes_or_no.FormInstanceID = @FormInstanceID
+WHERE #yes_or_no.FormInstanceID = 754732
 GROUP BY #yes_or_no.FormInstanceID,#yes_or_no.QStatus
 
 
@@ -121,29 +135,12 @@ FROM #yes_no_values
 select * from #YesNoPercent
 
 
-DELETE FROM #allInstances WHERE #allInstances.FormInstanceId = @FormInstanceID
-
-
-
---DROP TABLE #FormInstanceIDs
-
-DROP TABLE #yes_or_no
-DROP TABLE #yes_no_values 
-DROP TABLE #YesNoPercent
-
--- END OF Add Yes_VS_No calculation here - insert into =============================================================================
-
-
-	
-
-END
-
-
-
-
 DROP TABLE #allInstances
 DROP TABLE #gor_to_region
 DROP TABLE #smi_report_basic
+DROP TABLE #yes_or_no
+DROP TABLE #yes_no_values 
+DROP TABLE #YesNoPercent
 ------------------------------------------------------------------------------------------------------------------------
 
 --SELECT DISTINCT #smi_report_basic.FormInstanceID 
