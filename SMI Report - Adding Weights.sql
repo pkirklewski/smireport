@@ -105,12 +105,15 @@ BEGIN
 END
 ------------------------------------------------------------------------------------------------------------------------
 
-select *  from #yes_or_no
+
+
+
+-- Calculating Yes_No values =================================================================================
 
 
 
 
-
+-- End Of: Calculating Yes_No values =================================================================================
 
 
 
@@ -313,7 +316,7 @@ FROM #smi_report_with_WorkOrderNumber
 LEFT JOIN #gor_to_region ON #smi_report_with_WorkOrderNumber.RegionName = #gor_to_region.GOR
 
  
- select * from #smi_report_with_RegionLetterAndName WHERE Answers = 'No'
+ --select * from #smi_report_with_RegionLetterAndName WHERE Answers = 'No'
 --select * from #WORKORDERNUMBER
 
 --select count(*) AS WORKORDRNUMBER_COUNT FROM #WORKORDERNUMBER
@@ -341,4 +344,5 @@ DROP TABLE #smi_report_with_WorkOrderNumber
 DROP TABLE #WORKORDERNUMBER
 DROP TABLE #gor_to_region
 DROP TABLE #smi_report_with_RegionLetterAndName
-drop table #yes_or_no
+DROP TABLE #yes_or_no
+DROP TABLE #yes_no_values
