@@ -16,12 +16,32 @@ SELECT FormInstanceId
 INTO #allInstances
 FROM MobileForms.dbo.FormInstance 
 WHERE FormDefinitionId = 263 
-AND CreatedDate BETWEEN '2017-03-25 00:00:00.000' AND '2017-03-31 00:00:00.000'
+AND CreatedDate BETWEEN '2017-04-01 00:00:00.000' AND '2017-04-30 23:59:59.999'--'2017-03-30 17:30:00.000' AND '2017-03-30 23:59:00.000'
+
+-- The problem is in FormInstanceID = 786259 TimeFrame  '2017-03-30 16:30:00.000' AND '2017-03-30 18:00:00.000'
+-- However FromInstanceID = 786356 (next in line) TimeFrame '2017-03-30 16:30:00.000' AND '2017-03-30 18:00:00.000' does not have the same issue
+-- The issue indeed is in the SP ReportsGetSecurityInspectionFormHeaderDetails001 at line 29 where the following line of code starts:
+
+
+--Get All the header information for the submitted form
+--WITH FormHeader AS(
+--SELECT sr.Code
+--		, fv.Value
+--FROM FormDefinition fd (NOLOCK)
+--		INNER JOIN FormInstance fi (NOLOCK) ON fi.FormDefinitionId = fd.FormDefinitionId
+--		INNER JOIN FieldValue fv (NOLOCK) ON fv.FormInstanceId = fi.FormInstanceId
+--		INNER JOIN FieldDefinition fid (NOLOCK) ON fid.FieldDefinitionId = fv.FieldDefinitionId
+--		...
+
+
+
 --SELECT * from #allInstances
 
 SET @numberOfInstances = (SELECT COUNT(*) FROM #allInstances)
 
---select COUNT(*) AS COUNT_allinstance from #allInstances
+--SELECT TOP 1 #allInstances.FormInstanceId from #allInstances
+--SELECT TOP 1 * FROM #allInstances
+
 --select @numberOfInstances AS NumberOFInstances
 
 
@@ -86,17 +106,29 @@ DELETE FROM [MobileForms].[dbo].[FormInstanceProcessed]
 WHILE ( @licznik ) < (@numberOfInstances)
  
 BEGIN
-   	
+--START THE TRY BLOCK =====================================================================================================================
+   
+   --BEGIN TRY
+   
    	SET @FormInstanceID =  (SELECT TOP 1 #allInstances.FormInstanceId from #allInstances)
+	
+	--PLease run againg
+	--OK
+   	--PRINT FORMINSTANCEID
+	PRINT @FormInstanceID
 
 	INSERT INTO [MobileForms].[dbo].FormInstanceProcessed VALUES (@FormInstanceID,@licznik)
 
    	set @licznik = @licznik + 1
    	
 	--INSERT INTO #smi_report EXEC [dbo].[ReportsGetSecurityInspectionFormHeaderDetails001] @FormInstanceID
+	--In this part, some FormInstanceID returns data with invalid lenght
 
+	BEGIN TRY
 	INSERT INTO #smi_report_basic EXEC [dbo].[ReportsGetSecurityInspectionFormHeaderDetails001] @FormInstanceID 
-
+	END TRY
+	BEGIN CATCH
+	END CATCH
 	-- Add Yes_VS_No calculation here - insert into  =================================================================================================================
 
 SELECT  FormInstanceID,QStatus 
@@ -154,6 +186,25 @@ INTO #YesNoPercent
 FROM #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID
 
 select * from #YesNoPercent 
+--SELECT TOP 1 #allInstances.FormInstanceId AS TOP1_FROM_allInstances FROM #allInstances
+
+
+--END TRY
+--BEGIN CATCH
+--PRINT ERROR_NUMBER()
+--PRINT ERROR_MESSAGE()
+--    SELECT   
+--		@FormInstanceID
+--        ,ERROR_NUMBER() AS ErrorNumber  
+--       ,ERROR_MESSAGE() AS ErrorMessage;  
+--END CATCH
+
+--END TRY =============================================================================================================================================
+
+
+--BEGIN CATCH
+--show the top 1 of #allinstances
+--END CATCH
 
 DELETE FROM #allInstances WHERE #allInstances.FormInstanceId = @FormInstanceID
 
@@ -178,3 +229,4 @@ DROP TABLE #smi_report_basic
 
 
 
+-- go on 
