@@ -83,13 +83,15 @@ DELETE FROM #allInstances WHERE #allInstances.FormInstanceId = @FormInstanceID
 -- END OF Add Yes_VS_No calculation here - insert into =============================================================================
 END
 
-SET @FormInstanceID = 754749 --754732
+SET @FormInstanceID = 249770
+ --754732
 
 SELECT  FormInstanceID,QStatus 
 INTO #yes_or_no
 FROM #smi_report_basic 
 WHERE FormInstanceID = @FormInstanceID
 AND (QStatus = 'Yes' OR QStatus ='No')
+
 
 
 select (Select DISTINCT #yes_or_no.FormInstanceID) as FormInstanceID
@@ -100,7 +102,6 @@ INTO #yes_no_values
 FROM #yes_or_no 
 WHERE #yes_or_no.FormInstanceID = @FormInstanceID
 GROUP BY #yes_or_no.FormInstanceID,#yes_or_no.QStatus
-
 
 
 --SELECT * FROM #yes_or_no WHERE #yes_or_no.FormInstanceID = @FormInstanceID

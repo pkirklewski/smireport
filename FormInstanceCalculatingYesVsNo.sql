@@ -16,12 +16,14 @@ SELECT FormInstanceId
 INTO #allInstances
 FROM MobileForms.dbo.FormInstance 
 WHERE FormDefinitionId = 263 
-AND CreatedDate BETWEEN '2016-01-01 00:00:00.000' AND '2017-02-01 00:00:00.000'
+AND CreatedDate BETWEEN '2017-03-25 00:00:00.000' AND '2017-03-31 00:00:00.000'
 --SELECT * from #allInstances
 
 SET @numberOfInstances = (SELECT COUNT(*) FROM #allInstances)
 
-select * from #allInstances
+--select COUNT(*) AS COUNT_allinstance from #allInstances
+--select @numberOfInstances AS NumberOFInstances
+
 
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -77,7 +79,7 @@ INSERT INTO #gor_to_region VALUES (11,5,'D','South West, South East and London')
 
 
 
---DELETE FROM [MobileForms].[dbo].[FormInstanceProcessed]
+DELETE FROM [MobileForms].[dbo].[FormInstanceProcessed]
 
 --select from [MobileForms].[dbo].[FormInstanceProcessed].
 
@@ -87,9 +89,8 @@ BEGIN
    	
    	SET @FormInstanceID =  (SELECT TOP 1 #allInstances.FormInstanceId from #allInstances)
 
-	--INSERT INTO [MobileForms].[dbo].[FormInstanceProcessed].FormInstanceID (@FormInstanceID)
+	INSERT INTO [MobileForms].[dbo].FormInstanceProcessed VALUES (@FormInstanceID,@licznik)
 
- 
    	set @licznik = @licznik + 1
    	
 	--INSERT INTO #smi_report EXEC [dbo].[ReportsGetSecurityInspectionFormHeaderDetails001] @FormInstanceID
@@ -141,8 +142,6 @@ SET @p = 0.00
 
 --SELECT CASE WHEN @n_final < 1 THEN (SET @p = 0.00) END
 
-
-
 SET @p = (SELECT CASE WHEN (@n_final + @y_final)  = 0  THEN 77.77 ELSE (CAST((@n_final / ((@y_final + @n_final)/100.00)) AS DECIMAL(4,2))) END)
 
 SELECT DISTINCT #yes_no_values.FormInstanceID AS FormInstanceID
@@ -153,7 +152,6 @@ SELECT DISTINCT #yes_no_values.FormInstanceID AS FormInstanceID
 , (SELECT CASE WHEN @p < 90.00 THEN 0 WHEN @p >= 90.00 THEN 1 END) AS Reinspection
 INTO #YesNoPercent
 FROM #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID
-
 
 select * from #YesNoPercent 
 
