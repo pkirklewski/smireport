@@ -16,10 +16,12 @@ SELECT FormInstanceId
 INTO #allInstances
 FROM MobileForms.dbo.FormInstance 
 WHERE FormDefinitionId = 263 
-AND CreatedDate BETWEEN '2017-01-01 00:00:00.000' AND '2017-02-01 00:00:00.000'
+AND CreatedDate BETWEEN '2016-01-01 00:00:00.000' AND '2017-02-01 00:00:00.000'
 --SELECT * from #allInstances
 
 SET @numberOfInstances = (SELECT COUNT(*) FROM #allInstances)
+
+select * from #allInstances
 
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -62,11 +64,31 @@ INSERT INTO #gor_to_region VALUES (11,5,'D','South West, South East and London')
 --delete from #gor_to_region
 --select * from #gor_to_region
 
+
+
+
+-- Create a temp table to store the @FormInstanceIDs that are being processed in order to figure out why the 'string or binary data would be truncated' Error in the SP at line 29
+--USE MobileForms;
+--CREATE TABLE [MobileForms].[dbo].[FormInstanceProcessed] (FormInstanceID INT)
+
+
+
+-- ===========
+
+
+
+--DELETE FROM [MobileForms].[dbo].[FormInstanceProcessed]
+
+--select from [MobileForms].[dbo].[FormInstanceProcessed].
+
 WHILE ( @licznik ) < (@numberOfInstances)
  
 BEGIN
    	
    	SET @FormInstanceID =  (SELECT TOP 1 #allInstances.FormInstanceId from #allInstances)
+
+	--INSERT INTO [MobileForms].[dbo].[FormInstanceProcessed].FormInstanceID (@FormInstanceID)
+
  
    	set @licznik = @licznik + 1
    	
@@ -113,13 +135,25 @@ SET @n_final = @n + @n0
 --select * from #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID AND #yes_no_values.Yes > 0 
 --select #yes_no_values.Yes from #yes_no_values WHERE #yes_no_values.Yes IS NOT NULL AND #yes_no_values.FormInstanceID = @FormInstanceID
 
+DECLARE @p DECIMAL(4,2)
+
+SET @p = 0.00
+
+--SELECT CASE WHEN @n_final < 1 THEN (SET @p = 0.00) END
+
+
+
+SET @p = (SELECT CASE WHEN (@n_final + @y_final)  = 0  THEN 77.77 ELSE (CAST((@n_final / ((@y_final + @n_final)/100.00)) AS DECIMAL(4,2))) END)
+
 SELECT DISTINCT #yes_no_values.FormInstanceID AS FormInstanceID
 ,@y_final AS YesValue
 ,@n_final AS NoValue
 ,@y_final + @n_final AS TotalValue
-,CAST((@n_final / ((@y_final + @n_final)/100.00)) AS DECIMAL(4,2)) AS PerCentValue
+,@p as p 
+, (SELECT CASE WHEN @p < 90.00 THEN 0 WHEN @p >= 90.00 THEN 1 END) AS Reinspection
 INTO #YesNoPercent
 FROM #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID
+
 
 select * from #YesNoPercent 
 
