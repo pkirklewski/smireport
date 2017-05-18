@@ -21,23 +21,6 @@ AND CreatedDate BETWEEN '2017-01-01 00:00:00.000' AND '2017-02-01 00:00:00.000'
 
 SET @numberOfInstances = (SELECT COUNT(*) FROM #allInstances)
 
---CREATE TABLE SMI_REPORT
---(FormInstanceID VARCHAR(255),
---CreatedDate VARCHAR(255),
---Questions VARCHAR(255) ,
---QNum VARCHAR(255) ,
---QStatusInt VARCHAR(255) ,
---QuestionCount VARCHAR(255) ,
---WeightedScores VARCHAR(255) ,
---Observation VARCHAR(255) ,
---Aspect VARCHAR(255) ,
---AspectSort VARCHAR(255) ,
---QStatus VARCHAR(255) ,
---QComments VARCHAR(255) ,
---WorkOrderNumber VARCHAR(255))
-
---EXEC [dbo].[ReportsGetSecurityInspectionFormHeaderDetails001] 754732
-
 ------------------------------------------------------------------------------------------------------------------------
 
 -- Create a Tenp Table -------------------------------------------------------------------------------------------------
@@ -102,28 +85,45 @@ AND (QStatus = 'Yes' OR QStatus ='No')
 
 select (Select DISTINCT #yes_or_no.FormInstanceID) as FormInstanceID
 ,#yes_or_no.QStatus
-,(SELECT COUNT(#yes_or_no.QStatus) WHERE #yes_or_no.QStatus = 'Yes')  AS 'Yes'
-,(SELECT COUNT(#yes_or_no.QStatus) WHERE #yes_or_no.QStatus = 'No') AS 'No' 
+,ISNULL((SELECT COUNT(#yes_or_no.QStatus) WHERE #yes_or_no.QStatus = 'Yes'),0)  AS 'Yes'
+,ISNULL((SELECT COUNT(#yes_or_no.QStatus) WHERE #yes_or_no.QStatus = 'No'),0) AS 'No' 
 INTO #yes_no_values
 FROM #yes_or_no 
 WHERE #yes_or_no.FormInstanceID = @FormInstanceID
 GROUP BY #yes_or_no.FormInstanceID,#yes_or_no.QStatus
 
 
+DECLARE @y INT
+DECLARE @y0 INT
+DECLARE @y_final INT
+DECLARE @n INT
+DECLARE @n0 INT
+DECLARE @n_final INT
+DECLARE @total INT
+DECLARE @pcent INT
+
+SET @y = ISNULL((select #yes_no_values.Yes from #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID AND #yes_no_values.Yes > 0),0)
+SET @y0 = ISNULL((select #yes_no_values.Yes from #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID AND #yes_no_values.Yes = 0),0)
+SET @n = ISNULL((select #yes_no_values.No from #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID AND #yes_no_values.No > 0),0) 
+SET @n0 = ISNULL((select #yes_no_values.No from #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID AND #yes_no_values.no = 0),0) 
+
+SET @y_final = @y + @y0
+SET @n_final = @n + @n0
+
+--select * from #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID AND #yes_no_values.Yes > 0 
+--select #yes_no_values.Yes from #yes_no_values WHERE #yes_no_values.Yes IS NOT NULL AND #yes_no_values.FormInstanceID = @FormInstanceID
+
 SELECT DISTINCT #yes_no_values.FormInstanceID AS FormInstanceID
-,(select #yes_no_values.Yes from #yes_no_values WHERE #yes_no_values.Yes IS NOT NULL) AS YesValue
-,(select #yes_no_values.No from #yes_no_values WHERE #yes_no_values.No IS NOT NULL) AS NoValue
-,((select #yes_no_values.Yes from #yes_no_values WHERE #yes_no_values.Yes IS NOT NULL) + (SELECT #yes_no_values.No from #yes_no_values WHERE #yes_no_values.No IS NOT NULL)) AS TotalValue
-,(select #yes_no_values.No from #yes_no_values WHERE #yes_no_values.No IS NOT NULL) / ((((select #yes_no_values.Yes from #yes_no_values WHERE #yes_no_values.Yes IS NOT NULL) + (SELECT #yes_no_values.No from #yes_no_values WHERE #yes_no_values.No IS NOT NULL)))/100.00) AS PerCentValue
+,@y_final AS YesValue
+,@n_final AS NoValue
+,@y_final + @n_final AS TotalValue
+,CAST((@n_final / ((@y_final + @n_final)/100.00)) AS DECIMAL(4,2)) AS PerCentValue
 INTO #YesNoPercent
-FROM #yes_no_values 
+FROM #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID
 
-select * from #YesNoPercent
-
+select * from #YesNoPercent 
 
 DELETE FROM #allInstances WHERE #allInstances.FormInstanceId = @FormInstanceID
-
-
 
 --DROP TABLE #FormInstanceIDs
 
@@ -133,24 +133,13 @@ DROP TABLE #YesNoPercent
 
 -- END OF Add Yes_VS_No calculation here - insert into =============================================================================
 
-
-	
-
 END
-
-
-
 
 DROP TABLE #allInstances
 DROP TABLE #gor_to_region
 DROP TABLE #smi_report_basic
 ------------------------------------------------------------------------------------------------------------------------
 
---SELECT DISTINCT #smi_report_basic.FormInstanceID 
---INTO #FormInstanceIDs
---FROM #smi_report_basic
-
---select * from #FormInstanceIDs
 
 
 

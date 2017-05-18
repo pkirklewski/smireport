@@ -12,6 +12,8 @@ DECLARE @numberOfInstances INT
 DECLARE @x INT
 SET @licznik = 0
 
+
+
 SELECT FormInstanceId
 INTO #allInstances
 FROM MobileForms.dbo.FormInstance 
@@ -21,26 +23,8 @@ AND CreatedDate BETWEEN '2017-01-01 00:00:00.000' AND '2017-02-01 00:00:00.000'
 
 SET @numberOfInstances = (SELECT COUNT(*) FROM #allInstances)
 
---CREATE TABLE SMI_REPORT
---(FormInstanceID VARCHAR(255),
---CreatedDate VARCHAR(255),
---Questions VARCHAR(255) ,
---QNum VARCHAR(255) ,
---QStatusInt VARCHAR(255) ,
---QuestionCount VARCHAR(255) ,
---WeightedScores VARCHAR(255) ,
---Observation VARCHAR(255) ,
---Aspect VARCHAR(255) ,
---AspectSort VARCHAR(255) ,
---QStatus VARCHAR(255) ,
---QComments VARCHAR(255) ,
---WorkOrderNumber VARCHAR(255))
 
---EXEC [dbo].[ReportsGetSecurityInspectionFormHeaderDetails001] 754732
-
-------------------------------------------------------------------------------------------------------------------------
-
--- Create a Tenp Table -------------------------------------------------------------------------------------------------
+-- Create a Temp Table -------------------------------------------------------------------------------------------------
 
 CREATE TABLE #smi_report_basic
 (FormInstanceID VARCHAR(255),
@@ -73,11 +57,7 @@ INSERT INTO #gor_to_region VALUES (9,5,'D','South West, South East and London')
 INSERT INTO #gor_to_region VALUES (10,5,'D','South West, South East and London')
 INSERT INTO #gor_to_region VALUES (11,5,'D','South West, South East and London')
 
---delete from #gor_to_region
---select * from #gor_to_region
 
---delete from #gor_to_region
---select * from #gor_to_region
 
 WHILE ( @licznik ) < (@numberOfInstances)
  
@@ -94,34 +74,38 @@ BEGIN
 	-- Add Yes_VS_No calculation here - insert into  =================================================================================================================
 
 
-
+	
 
 DELETE FROM #allInstances WHERE #allInstances.FormInstanceId = @FormInstanceID
 
-
-
 --DROP TABLE #FormInstanceIDs
-
-
 
 -- END OF Add Yes_VS_No calculation here - insert into =============================================================================
 END
 
+SET @FormInstanceID = 754749 --754732
+
 SELECT  FormInstanceID,QStatus 
 INTO #yes_or_no
 FROM #smi_report_basic 
-WHERE FormInstanceID = 754732
+WHERE FormInstanceID = @FormInstanceID
 AND (QStatus = 'Yes' OR QStatus ='No')
 
 
 select (Select DISTINCT #yes_or_no.FormInstanceID) as FormInstanceID
 ,#yes_or_no.QStatus
-,(SELECT COUNT(#yes_or_no.QStatus) WHERE #yes_or_no.QStatus = 'Yes')  AS 'Yes'
-,(SELECT COUNT(#yes_or_no.QStatus) WHERE #yes_or_no.QStatus = 'No') AS 'No' 
+,ISNULL((SELECT COUNT(#yes_or_no.QStatus) WHERE #yes_or_no.QStatus = 'Yes'),0)  AS 'Yes'
+,ISNULL((SELECT COUNT(#yes_or_no.QStatus) WHERE #yes_or_no.QStatus = 'No'),0) AS 'No' 
 INTO #yes_no_values
 FROM #yes_or_no 
-WHERE #yes_or_no.FormInstanceID = 754732
+WHERE #yes_or_no.FormInstanceID = @FormInstanceID
 GROUP BY #yes_or_no.FormInstanceID,#yes_or_no.QStatus
+
+
+
+--SELECT * FROM #yes_or_no WHERE #yes_or_no.FormInstanceID = @FormInstanceID
+SELECT * FROM #yes_no_values  WHERE #yes_no_values.FormInstanceID = @FormInstanceID
+
 
 
 SELECT DISTINCT #yes_no_values.FormInstanceID AS FormInstanceID
@@ -142,11 +126,6 @@ DROP TABLE #yes_no_values
 DROP TABLE #YesNoPercent
 ------------------------------------------------------------------------------------------------------------------------
 
---SELECT DISTINCT #smi_report_basic.FormInstanceID 
---INTO #FormInstanceIDs
---FROM #smi_report_basic
-
---select * from #FormInstanceIDs
 
 
 
