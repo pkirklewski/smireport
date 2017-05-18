@@ -134,7 +134,6 @@ FROM #yes_no_values
 
 select * from #YesNoPercent
 
-
 DROP TABLE #allInstances
 DROP TABLE #gor_to_region
 DROP TABLE #smi_report_basic
