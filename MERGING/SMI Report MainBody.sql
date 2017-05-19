@@ -330,10 +330,13 @@ FROM #smi_report_with_WorkOrderNumber
 LEFT JOIN #gor_to_region ON #smi_report_with_WorkOrderNumber.RegionName = #gor_to_region.GOR
 
  
- select * from #smi_report_with_RegionLetterAndName WHERE Answers = 'No'
+-- select * from #smi_report_with_RegionLetterAndName WHERE Answers = 'No'
 
 
-
+ SELECT *,#yes_no_percent_final.NoToYesPercent,Reinspection 
+ FROM #smi_report_with_RegionLetterAndName 
+ LEFT JOIN #yes_no_percent_final ON #smi_report_with_RegionLetterAndName.FormInstanceID = #yes_no_percent_final.FormInstanceID
+ WHERE #smi_report_with_RegionLetterAndName.Answers = 'No'
 
 DROP TABLE #allInstances
 DROP TABLE #smi_report_basic
