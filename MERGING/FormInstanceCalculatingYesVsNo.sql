@@ -16,38 +16,12 @@ SELECT FormInstanceId
 INTO #allInstances
 FROM MobileForms.dbo.FormInstance 
 WHERE FormDefinitionId = 263 
-AND CreatedDate BETWEEN '2017-01-01 00:00:00.000' AND '2017-01-31 23:59:59.999'--'2017-03-30 17:30:00.000' AND '2017-03-30 23:59:00.000'
-
--- The problem is in FormInstanceID = 786259 TimeFrame  '2017-03-30 16:30:00.000' AND '2017-03-30 18:00:00.000'
--- However FromInstanceID = 786356 (next in line) TimeFrame '2017-03-30 16:30:00.000' AND '2017-03-30 18:00:00.000' does not have the same issue
--- The issue indeed is in the SP ReportsGetSecurityInspectionFormHeaderDetails001 at line 29 where the following line of code starts:
-
-
---Get All the header information for the submitted form
---WITH FormHeader AS(
---SELECT sr.Code
---		, fv.Value
---FROM FormDefinition fd (NOLOCK)
---		INNER JOIN FormInstance fi (NOLOCK) ON fi.FormDefinitionId = fd.FormDefinitionId
---		INNER JOIN FieldValue fv (NOLOCK) ON fv.FormInstanceId = fi.FormInstanceId
---		INNER JOIN FieldDefinition fid (NOLOCK) ON fid.FieldDefinitionId = fv.FieldDefinitionId
---		...
-
-
+AND CreatedDate BETWEEN '2017-01-01 00:00:00.000' AND '2017-01-31 23:59:59.999'
 
 --SELECT * from #allInstances
 
 SET @numberOfInstances = (SELECT COUNT(*) FROM #allInstances)
 
---SELECT TOP 1 #allInstances.FormInstanceId from #allInstances
---SELECT TOP 1 * FROM #allInstances
-
---select @numberOfInstances AS NumberOFInstances
-
-
-------------------------------------------------------------------------------------------------------------------------
-
--- Create a Tenp Table -------------------------------------------------------------------------------------------------
 
 CREATE TABLE #smi_report_basic
 (FormInstanceID VARCHAR(255),
@@ -80,57 +54,26 @@ INSERT INTO #gor_to_region VALUES (9,5,'D','South West, South East and London')
 INSERT INTO #gor_to_region VALUES (10,5,'D','South West, South East and London')
 INSERT INTO #gor_to_region VALUES (11,5,'D','South West, South East and London')
 
---delete from #gor_to_region
---select * from #gor_to_region
-
---delete from #gor_to_region
---select * from #gor_to_region
-
-
-
-
--- Create a temp table to store the @FormInstanceIDs that are being processed in order to figure out why the 'string or binary data would be truncated' Error in the SP at line 29
---USE MobileForms;
---CREATE TABLE [MobileForms].[dbo].[FormInstanceProcessed] (FormInstanceID INT)
-
-
-
--- ===========
-
-
-
 DELETE FROM [MobileForms].[dbo].[FormInstanceProcessed]
 
---select from [MobileForms].[dbo].[FormInstanceProcessed].
+
 
 WHILE ( @licznik ) < (@numberOfInstances)
  
 BEGIN
---START THE TRY BLOCK =====================================================================================================================
-   
-   --BEGIN TRY
-   
+
    	SET @FormInstanceID =  (SELECT TOP 1 #allInstances.FormInstanceId from #allInstances)
-	
-	--PLease run againg
-	--OK
-   	--PRINT FORMINSTANCEID
-	PRINT @FormInstanceID
 
 	INSERT INTO [MobileForms].[dbo].FormInstanceProcessed VALUES (@FormInstanceID,@licznik)
 
    	set @licznik = @licznik + 1
-   	
-	--INSERT INTO #smi_report EXEC [dbo].[ReportsGetSecurityInspectionFormHeaderDetails001] @FormInstanceID
-	--In this part, some FormInstanceID returns data with invalid lenght
 
 	BEGIN TRY
 	INSERT INTO #smi_report_basic EXEC [dbo].[ReportsGetSecurityInspectionFormHeaderDetails001] @FormInstanceID 
 	END TRY
 	BEGIN CATCH
 	END CATCH
-	-- Add Yes_VS_No calculation here - insert into  =================================================================================================================
-
+	
 SELECT  FormInstanceID,QStatus 
 INTO #yes_or_no
 FROM #smi_report_basic 
@@ -165,14 +108,8 @@ SET @n0 = ISNULL((select #yes_no_values.No from #yes_no_values WHERE #yes_no_val
 SET @y_final = @y + @y0
 SET @n_final = @n + @n0
 
---select * from #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID AND #yes_no_values.Yes > 0 
---select #yes_no_values.Yes from #yes_no_values WHERE #yes_no_values.Yes IS NOT NULL AND #yes_no_values.FormInstanceID = @FormInstanceID
 
 DECLARE @p DECIMAL(4,2)
-
-SET @p = 0.00
-
---SELECT CASE WHEN @n_final < 1 THEN (SET @p = 0.00) END
 
 SET @p = (SELECT CASE WHEN (@n_final + @y_final)  = 0  THEN 77.77 ELSE (CAST((@n_final / ((@y_final + @n_final)/100.00)) AS DECIMAL(4,2))) END)
 
@@ -207,8 +144,6 @@ select * from #YesNoPercent
 --END CATCH
 
 DELETE FROM #allInstances WHERE #allInstances.FormInstanceId = @FormInstanceID
-
---DROP TABLE #FormInstanceIDs
 
 DROP TABLE #yes_or_no
 DROP TABLE #yes_no_values 

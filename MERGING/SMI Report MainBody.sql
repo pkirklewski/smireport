@@ -16,31 +16,12 @@ SELECT FormInstanceId
 INTO #allInstances
 FROM MobileForms.dbo.FormInstance 
 WHERE FormDefinitionId = 263 
-AND CreatedDate BETWEEN '2017-01-01 00:00:00.000' AND '2017-02-01 00:00:00.000'
+AND CreatedDate BETWEEN '2017-01-01 00:00:00.000' AND '2017-01-31 23:59:59.999'
+
 --SELECT * from #allInstances
 
 SET @numberOfInstances = (SELECT COUNT(*) FROM #allInstances)
 
---CREATE TABLE SMI_REPORT
---(FormInstanceID VARCHAR(255),
---CreatedDate VARCHAR(255),
---Questions VARCHAR(255) ,
---QNum VARCHAR(255) ,
---QStatusInt VARCHAR(255) ,
---QuestionCount VARCHAR(255) ,
---WeightedScores VARCHAR(255) ,
---Observation VARCHAR(255) ,
---Aspect VARCHAR(255) ,
---AspectSort VARCHAR(255) ,
---QStatus VARCHAR(255) ,
---QComments VARCHAR(255) ,
---WorkOrderNumber VARCHAR(255))
-
---EXEC [dbo].[ReportsGetSecurityInspectionFormHeaderDetails001] 754732
-
-------------------------------------------------------------------------------------------------------------------------
-
--- Create a Tenp Table -------------------------------------------------------------------------------------------------
 
 CREATE TABLE #smi_report_basic
 (FormInstanceID VARCHAR(255),
@@ -73,14 +54,9 @@ INSERT INTO #gor_to_region VALUES (9,5,'D','South West, South East and London')
 INSERT INTO #gor_to_region VALUES (10,5,'D','South West, South East and London')
 INSERT INTO #gor_to_region VALUES (11,5,'D','South West, South East and London')
 
-CREATE TABLE #yes_or_no (FormInstanceID INT,Qstatus VARCHAR(10))
+DELETE FROM [MobileForms].[dbo].[FormInstanceProcessed]
 
---delete from #gor_to_region
---select * from #gor_to_region
-
---delete from #gor_to_region
---select * from #gor_to_region
-
+--CREATE TABLE #yes_or_no (FormInstanceID INT,Qstatus VARCHAR(10))
 
 WHILE ( @licznik ) < (@numberOfInstances)
  
@@ -88,24 +64,80 @@ BEGIN
    	
    	SET @FormInstanceID =  (SELECT TOP 1 #allInstances.FormInstanceId from #allInstances)
  
-   	set @licznik = @licznik + 1
-   	
-	--INSERT INTO #smi_report EXEC [dbo].[ReportsGetSecurityInspectionFormHeaderDetails001] @FormInstanceID
+   	INSERT INTO [MobileForms].[dbo].FormInstanceProcessed VALUES (@FormInstanceID,@licznik)
+	
+	set @licznik = @licznik + 1
 
+	BEGIN TRY
 	INSERT INTO #smi_report_basic EXEC [dbo].[ReportsGetSecurityInspectionFormHeaderDetails001] @FormInstanceID 
+    END TRY
+	BEGIN CATCH
+	END CATCH
+
+SELECT  FormInstanceID,QStatus 
+INTO #yes_or_no
+FROM #smi_report_basic 
+WHERE FormInstanceID = @FormInstanceID
+AND (QStatus = 'Yes' OR QStatus ='No')
+	
+	
+select (Select DISTINCT #yes_or_no.FormInstanceID) as FormInstanceID
+,#yes_or_no.QStatus
+,ISNULL((SELECT COUNT(#yes_or_no.QStatus) WHERE #yes_or_no.QStatus = 'Yes'),0)  AS 'Yes'
+,ISNULL((SELECT COUNT(#yes_or_no.QStatus) WHERE #yes_or_no.QStatus = 'No'),0) AS 'No' 
+INTO #yes_no_values
+FROM #yes_or_no 
+WHERE #yes_or_no.FormInstanceID = @FormInstanceID
+GROUP BY #yes_or_no.FormInstanceID,#yes_or_no.QStatus
 
 
-	-- Yes vs No =======================================================================================================
-			
-	INSERT INTO #yes_or_no SELECT FormInstanceID,QStatus FROM #smi_report_basic WHERE FormInstanceID = @FormInstanceID AND (QStatus = 'Yes' OR QStatus ='No')
+DECLARE @y INT
+DECLARE @y0 INT
+DECLARE @y_final INT
+DECLARE @n INT
+DECLARE @n0 INT
+DECLARE @n_final INT
+DECLARE @total INT
+DECLARE @pcent INT
 
-	-- End of Yes vs No ================================================================================================
+SET @y = ISNULL((select #yes_no_values.Yes from #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID AND #yes_no_values.Yes > 0),0)
+SET @y0 = ISNULL((select #yes_no_values.Yes from #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID AND #yes_no_values.Yes = 0),0)
+SET @n = ISNULL((select #yes_no_values.No from #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID AND #yes_no_values.No > 0),0) 
+SET @n0 = ISNULL((select #yes_no_values.No from #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID AND #yes_no_values.no = 0),0) 
 
-	DELETE FROM #allInstances WHERE #allInstances.FormInstanceId = @FormInstanceID
+SET @y_final = @y + @y0
+SET @n_final = @n + @n0
+
+
+DECLARE @p DECIMAL(4,2)
+
+SET @p = (SELECT CASE WHEN (@n_final + @y_final)  = 0  THEN 77.77 ELSE (CAST((@n_final / ((@y_final + @n_final)/100.00)) AS DECIMAL(4,2))) END)
+
+SELECT DISTINCT #yes_no_values.FormInstanceID AS FormInstanceID
+,@y_final AS YesValue
+,@n_final AS NoValue
+,@y_final + @n_final AS TotalValue
+,@p as NoToYesPercent 
+, (SELECT CASE WHEN @p < 90.00 THEN 0 WHEN @p >= 90.00 THEN 1 END) AS Reinspection
+INTO #YesNoPercent
+FROM #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID
+
+--select * from #YesNoPercent 
+select * from  #yes_no_values
+
+DELETE FROM #allInstances WHERE #allInstances.FormInstanceId = @FormInstanceID
+
+DROP TABLE #yes_or_no
+DROP TABLE #yes_no_values 
+DROP TABLE #YesNoPercent
+
+DELETE FROM #allInstances WHERE #allInstances.FormInstanceId = @FormInstanceID
 END
-------------------------------------------------------------------------------------------------------------------------
 
---select *  from #yes_or_no
+DROP TABLE #allInstances
+DROP TABLE #gor_to_region
+DROP TABLE #smi_report_basic
+
 
 
 
