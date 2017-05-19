@@ -134,7 +134,20 @@ SELECT DISTINCT #yes_no_values.FormInstanceID AS FormInstanceID
 INTO #YesNoPercent
 FROM #yes_no_values WHERE #yes_no_values.FormInstanceID = @FormInstanceID
 
-INSERT INTO #yes_no_percent_final VALUES (#yes_no_percent_final.FormInstanceID,#yes_no_percent_final.YesValue,#yes_no_percent_final.NoValue,#yes_no_percent_final.TotalValue,#yes_no_percent_final.NoToYesPercent,Reinspection)
+
+DECLARE @ERROR VARCHAR(255)
+DECLARE @FINID INT
+SET @ERROR = ''
+SET @FINID = (SELECT #YesNoPercent.FormInstanceID FROM #YesNoPercent)
+
+
+INSERT INTO #yes_no_percent_final VALUES ((SELECT #YesNoPercent.FormInstanceID FROM #YesNoPercent)
+,(SELECT #YesNoPercent.YesValue FROM #YesNoPercent) 
+,(SELECT #YesNoPercent.NoValue FROM #YesNoPercent)
+,(SELECT #YesNoPercent.TotalValue FROM #YesNoPercent)
+,(SELECT #YesNoPercent.NoToYesPercent FROM #YesNoPercent)
+,(SELECT #YesNoPercent.Reinspection FROM #YesNoPercent)
+,@ERROR)
 
 --select * from  #yes_no_values
 
@@ -149,7 +162,7 @@ DELETE FROM #allInstances WHERE #allInstances.FormInstanceId = @FormInstanceID
 END --WND OF THE WHILE LOOP ===============================================================================================
 
 
-
+--select * from #yes_no_percent_final
 
 
 SELECT DISTINCT #smi_report_basic.FormInstanceID 
@@ -318,6 +331,8 @@ LEFT JOIN #gor_to_region ON #smi_report_with_WorkOrderNumber.RegionName = #gor_t
 
  
  select * from #smi_report_with_RegionLetterAndName WHERE Answers = 'No'
+
+
 
 
 DROP TABLE #allInstances
