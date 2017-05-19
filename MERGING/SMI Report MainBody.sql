@@ -321,7 +321,7 @@ SELECT #gor_to_region.Region as RegionNumber
 ,#smi_report_with_WorkOrderNumber.BuildingID
 ,#smi_report_with_WorkOrderNumber.Observation
 ,#smi_report_with_WorkOrderNumber.Aspect
-,#smi_report_with_WorkOrderNumber.Questions
+,REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(#smi_report_with_WorkOrderNumber.Questions,'?',''),'(',''),')',''),CHAR(13),''),CHAR(10),''),CHAR(9),'') AS Questions
 ,#smi_report_with_WorkOrderNumber.Answers
 ,#smi_report_with_WorkOrderNumber.Comments
 , ISNULL (#smi_report_with_WorkOrderNumber.WorkOrderNumber,'_') as WorkOrderNumber
@@ -329,14 +329,12 @@ INTO #smi_report_with_RegionLetterAndName
 FROM #smi_report_with_WorkOrderNumber
 LEFT JOIN #gor_to_region ON #smi_report_with_WorkOrderNumber.RegionName = #gor_to_region.GOR
 
- 
 -- select * from #smi_report_with_RegionLetterAndName WHERE Answers = 'No'
 
-
- SELECT *,#yes_no_percent_final.NoToYesPercent,Reinspection 
+ SELECT DISTINCT *,#yes_no_percent_final.NoToYesPercent,Reinspection 
  FROM #smi_report_with_RegionLetterAndName 
  LEFT JOIN #yes_no_percent_final ON #smi_report_with_RegionLetterAndName.FormInstanceID = #yes_no_percent_final.FormInstanceID
- WHERE #smi_report_with_RegionLetterAndName.Answers = 'No'
+ WHERE #smi_report_with_RegionLetterAndName.Answers = 'No' --AND #smi_report_with_RegionLetterAndName.Questions like '59.%'
 
 DROP TABLE #allInstances
 DROP TABLE #smi_report_basic
