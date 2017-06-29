@@ -3,6 +3,7 @@
 -- Author:Piotr Kirklewski
 -- Create date: 11/04/17
 -- Description: Runs [ReportsGetSecurityInspectionFormHeaderDetails] Stored Procedure repeatedly for all the FormInstanceIDs of SMI form in the specified timeframe
+-- Transfered to PRD-SQL11 on 29062017 - working
 -- ================================================================================================================================================================
 
 USE MobileForms; 
@@ -18,10 +19,13 @@ FROM MobileForms.dbo.FormInstance
 WHERE FormDefinitionId = 263 
 AND CreatedDate BETWEEN '2017-01-01 00:00:00.000' AND '2017-01-31 23:59:59.999'
 
+
+--SELECT COUNT(*) FROM #allInstances
 --SELECT * from #allInstances
 
 SET @numberOfInstances = (SELECT COUNT(*) FROM #allInstances)
 
+--SELECT @numberOfInstances
 
 CREATE TABLE #smi_report_basic
 (FormInstanceID VARCHAR(255),
@@ -48,10 +52,7 @@ CREATE TABLE #yes_no_percent_final
 ,ERROR VARCHAR(255)
 )
 
-
-
 -- END OF Create a Temp table -------------------------------------------------------------------------------------------------
-
 CREATE TABLE #gor_to_region (GOR INT,Region INT,RegionLetter VARCHAR(255),RegionName VARCHAR(255))
 
 INSERT INTO #gor_to_region VALUES (1,1,'A','Scotland and North East')
@@ -66,17 +67,11 @@ INSERT INTO #gor_to_region VALUES (9,5,'D','South West, South East and London')
 INSERT INTO #gor_to_region VALUES (10,5,'D','South West, South East and London')
 INSERT INTO #gor_to_region VALUES (11,5,'D','South West, South East and London')
 
-DELETE FROM [MobileForms].[dbo].[FormInstanceProcessed]
-
---CREATE TABLE #yes_or_no (FormInstanceID INT,Qstatus VARCHAR(10))
-
 WHILE ( @licznik ) < (@numberOfInstances)
  
 BEGIN
    	
    	SET @FormInstanceID =  (SELECT TOP 1 #allInstances.FormInstanceId from #allInstances)
- 
-   	INSERT INTO [MobileForms].[dbo].FormInstanceProcessed VALUES (@FormInstanceID,@licznik)
 	
 	set @licznik = @licznik + 1
 
@@ -92,7 +87,8 @@ FROM #smi_report_basic
 WHERE FormInstanceID = @FormInstanceID
 AND (QStatus = 'Yes' OR QStatus ='No')
 	
-	
+	--SELECT * FROM #yes_or_no
+
 select (Select DISTINCT #yes_or_no.FormInstanceID) as FormInstanceID
 ,#yes_or_no.QStatus
 ,ISNULL((SELECT COUNT(#yes_or_no.QStatus) WHERE #yes_or_no.QStatus = 'Yes'),0)  AS 'Yes'
@@ -102,6 +98,7 @@ FROM #yes_or_no
 WHERE #yes_or_no.FormInstanceID = @FormInstanceID
 GROUP BY #yes_or_no.FormInstanceID,#yes_or_no.QStatus
 
+--SELECT * FROM #yes_no_values
 
 DECLARE @y INT
 DECLARE @y0 INT
@@ -164,11 +161,9 @@ END --WND OF THE WHILE LOOP ====================================================
 
 --select * from #yes_no_percent_final
 
-
 SELECT DISTINCT #smi_report_basic.FormInstanceID 
 INTO #FormInstanceIDs
 FROM #smi_report_basic
-
 
 SELECT DISTINCT #smi_report_basic.FormInstanceId
 ,[MobileForms].[dbo].[FieldValue].Value as BuildingAddress
@@ -176,7 +171,6 @@ INTO #WORKADDRESS
 FROM #smi_report_basic
 LEFT JOIN [MobileForms].[dbo].[FieldValue] ON [MobileForms].[dbo].[FieldValue].FormInstanceId  = #smi_report_basic.FormInstanceID
 WHERE [MobileForms].[dbo].[FieldValue].FieldDefinitionId = 5907 
-
 
 SELECT [MobileForms].[dbo].[FieldValue].FormInstanceId,[MobileForms].[dbo].[FieldValue].Value as BuildingName
 INTO #BUILDINGNAME
@@ -192,13 +186,16 @@ FROM #smi_report_basic
 WHERE #smi_report_basic.FormInstanceID IN (SELECT #FormInstanceIDs.FormInstanceID FROM #FormInstanceIDs)
 AND #smi_report_basic.WorkOrderNumber IS NOT NULL
 
+
+--select  * from #WORKORDERNUMBER
+
+
 SELECT [MobileForms].[dbo].[FieldValue].FormInstanceId,[MobileForms].[dbo].[FieldValue].Value as BuildingID
 INTO #BUILDINGID
 FROM [MobileForms].[dbo].[FieldValue]
 LEFT JOIN #FormInstanceIDs ON [MobileForms].[dbo].[FieldValue].FormInstanceId= #FormInstanceIDs.FormInstanceID
 WHERE [MobileForms].[dbo].[FieldValue].FieldDefinitionId = 5899
 AND [MobileForms].[dbo].[FieldValue].FormInstanceId IN (SELECT #FormInstanceIDs.FormInstanceID FROM #FormInstanceIDs)
-
 
 SELECT [MobileForms].[dbo].[FieldValue].FormInstanceId,[MobileForms].[dbo].[FieldValue].Value as FirstName
 INTO #FMFIRSTNAME
@@ -207,7 +204,6 @@ LEFT JOIN #FormInstanceIDs ON [MobileForms].[dbo].[FieldValue].FormInstanceId = 
 WHERE [MobileForms].[dbo].[FieldValue].FieldDefinitionId = 5904
 AND [MobileForms].[dbo].[FieldValue].FormInstanceId IN (SELECT #FormInstanceIDs.FormInstanceID FROM #FormInstanceIDs)
 
-
 SELECT [MobileForms].[dbo].[FieldValue].FormInstanceId,[MobileForms].[dbo].[FieldValue].Value as LastName
 INTO #FMLASTNAME
 FROM [MobileForms].[dbo].[FieldValue]
@@ -215,12 +211,10 @@ LEFT JOIN #FormInstanceIDs ON [MobileForms].[dbo].[FieldValue].FormInstanceId = 
 WHERE [MobileForms].[dbo].[FieldValue].FieldDefinitionId = 5905
 AND [MobileForms].[dbo].[FieldValue].FormInstanceId IN (SELECT #FormInstanceIDs.FormInstanceID FROM #FormInstanceIDs)
 
-
 SELECT #BUILDINGID.BuildingID,[MobileForms].[dbo].[Schedule6BuildingData].GOR 
 INTO #BUILDINGGOR
 FROM #BUILDINGID
 LEFT JOIN [MobileForms].[dbo].[Schedule6BuildingData] ON [MobileForms].[dbo].[Schedule6BuildingData].BuildingId  = #BUILDINGID.BuildingID
-
 
 SELECT #BUILDINGID.BuildingID
 ,#smi_report_basic.FormInstanceID
@@ -232,7 +226,6 @@ SELECT #BUILDINGID.BuildingID
 INTO #smi_report_with_buildingID
 FROM #smi_report_basic
 LEFT JOIN #BUILDINGID ON #BUILDINGID.FormInstanceID = #smi_report_basic.FormInstanceID
-
 
 SELECT DISTINCT #BUILDINGGOR.GOR as RegionName
 ,#smi_report_with_buildingID.BuildingID
@@ -246,6 +239,9 @@ INTO #smi_report_with_GOR
 FROM #smi_report_with_buildingID
 LEFT JOIN #BUILDINGGOR ON #BUILDINGGOR.BuildingId = #smi_report_with_buildingID.BuildingID 
 
+--select count(*)  as smi_report_with_GOR from #smi_report_with_GOR --where FormInstanceID = 754732
+--select * from #smi_report_with_GOR
+--==================================================================================================================
 
 SELECT RegionName 
 , #FMFIRSTNAME.FirstName + ' ' + #FMLASTNAME.LastName as FacilitiesManager
@@ -261,7 +257,6 @@ FROM #smi_report_with_GOR
 LEFT JOIN #FMFIRSTNAME ON #FMFIRSTNAME.FormInstanceID = #smi_report_with_GOR.FormInstanceID 
 LEFT JOIN #FMLASTNAME ON #FMLASTNAME.FormInstanceID = #smi_report_with_GOR.FormInstanceID
 
-
 SELECT #smi_report_with_fmname.RegionName
 ,#smi_report_with_fmname.FacilitiesManager
 ,#BUILDINGNAME.BuildingName
@@ -275,7 +270,6 @@ SELECT #smi_report_with_fmname.RegionName
 INTO #smi_report_with_BuildngName
 FROM #smi_report_with_fmname
 LEFT JOIN #BUILDINGNAME ON #smi_report_with_fmname.FormInstanceID = #BUILDINGNAME.FormInstanceId --= #smi_report_with_fmname.FormInstanceID 
-
 
 SELECT #smi_report_with_BuildngName.RegionName
 ,#smi_report_with_BuildngName.FacilitiesManager
@@ -291,7 +285,6 @@ SELECT #smi_report_with_BuildngName.RegionName
 INTO #smi_report_with_BuildngAddress
 FROM #smi_report_with_BuildngName
 LEFT JOIN #WORKADDRESS ON #smi_report_with_BuildngName.FormInstanceID = #WORKADDRESS.FormInstanceId 
-
 
 SELECT #smi_report_with_BuildngAddress.RegionName
 ,#smi_report_with_BuildngAddress.FacilitiesManager
@@ -309,7 +302,6 @@ INTO #smi_report_with_WorkOrderNumber
 FROM #smi_report_with_BuildngAddress
 LEFT JOIN #WORKORDERNUMBER ON #WORKORDERNUMBER.FormInstanceID = #smi_report_with_BuildngAddress.FormInstanceID
 
-
 SELECT #gor_to_region.Region as RegionNumber
 ,#gor_to_region.RegionLetter 
 ,#gor_to_region.RegionName
@@ -321,9 +313,7 @@ SELECT #gor_to_region.Region as RegionNumber
 ,#smi_report_with_WorkOrderNumber.Observation
 ,#smi_report_with_WorkOrderNumber.Aspect
 ,#smi_report_with_WorkOrderNumber.Questions
---,REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(#smi_report_with_WorkOrderNumber.Questions,'?',''),'(',''),')',''),CHAR(13),''),CHAR(10),''),CHAR(9),'') AS Questions
 ,#smi_report_with_WorkOrderNumber.Answers
---,REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(#smi_report_with_WorkOrderNumber.Comments,'?',''),'(',''),')',''),CHAR(13),''),CHAR(10),''),CHAR(9),'') AS Comments
 ,#smi_report_with_WorkOrderNumber.Comments
 , ISNULL (#smi_report_with_WorkOrderNumber.WorkOrderNumber,'_') as WorkOrderNumber
 INTO #smi_report_with_RegionLetterAndName
@@ -332,10 +322,10 @@ LEFT JOIN #gor_to_region ON #smi_report_with_WorkOrderNumber.RegionName = #gor_t
 
 -- select * from #smi_report_with_RegionLetterAndName WHERE Answers = 'No'
 
- SELECT DISTINCT *--,#yes_no_percent_final.NoToYesPercent,Reinspection 
+ SELECT *,#yes_no_percent_final.NoToYesPercent,Reinspection 
  FROM #smi_report_with_RegionLetterAndName 
  LEFT JOIN #yes_no_percent_final ON #smi_report_with_RegionLetterAndName.FormInstanceID = #yes_no_percent_final.FormInstanceID
- WHERE #smi_report_with_RegionLetterAndName.Answers = 'No' --AND #smi_report_with_RegionLetterAndName.Questions like '59.%'
+ WHERE #smi_report_with_RegionLetterAndName.Answers = 'No'
 
 DROP TABLE #allInstances
 DROP TABLE #smi_report_basic
